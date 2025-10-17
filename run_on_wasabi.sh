@@ -27,7 +27,7 @@ else
   echo $OS_PATH" doesn't exist"
   echo "cloning wasabi project..."
   cd $TARGET_PATH
-  git clone --branch for_saba git@github.com:hikalium/wasabi.git
+  git clone --branch for_saba https://github.com/hikalium/wasabi.git
 fi
 
 # go back to the application top directory
@@ -40,4 +40,15 @@ if [ ! -f $MAKEFILE_PATH ]; then
 fi
 
 make build
-$OS_PATH/scripts/run_with_app.sh ./target/x86_64-unknown-none/release/$APP_NAME
+
+# init.txtにsabaを追加（buildディレクトリ内のファイルが更新されても対応できるように）
+if ! grep -q "^saba$" $OS_PATH/default/init.txt; then
+  echo "saba" >> $OS_PATH/default/init.txt
+fi
+
+# macOSでQEMUのGUIを表示するために、DISPLAY環境変数を設定
+export DISPLAY=:0
+
+# macOS互換性のため、run_with_app.shの代わりに直接makeを呼び出す
+WITH_APP_BIN="$(realpath ./target/x86_64-unknown-none/release/$APP_NAME)"
+make -C "$OS_PATH" run WITH_APP_BIN="$WITH_APP_BIN"
