@@ -102,10 +102,15 @@ impl Page {
     /// Called when HTTP response is received.
     pub fn receive_response(&mut self, response: HttpResponse) {
         console_debug(&self.browser, "receive_response start".to_string());
+        console_debug(&self.browser, format!("Response body length: {}", response.body().len()));
 
+        console_debug(&self.browser, "Creating frame from HTML...".to_string());
         self.create_frame(response.body());
+        console_debug(&self.browser, "Frame created successfully".to_string());
 
+        console_debug(&self.browser, "Executing JavaScript...".to_string());
         self.execute_js();
+        console_debug(&self.browser, "JavaScript execution complete".to_string());
 
         while self.modified {
             let dom = match &self.frame {
@@ -122,9 +127,13 @@ impl Page {
             self.execute_js();
         }
 
+        console_debug(&self.browser, "Setting layout view...".to_string());
         self.set_layout_view();
+        console_debug(&self.browser, "Layout view set successfully".to_string());
 
+        console_debug(&self.browser, "Painting tree...".to_string());
         self.paint_tree();
+        console_debug(&self.browser, format!("Paint complete. Display items count: {}", self.display_items.len()));
     }
 
     pub fn set_browser(&mut self, browser: Weak<RefCell<Browser>>) {

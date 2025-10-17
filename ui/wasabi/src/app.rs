@@ -145,7 +145,14 @@ impl WasabiUI {
                             self.input_mode = InputMode::Normal;
                         } else {
                             println!("Starting navigation to: {}", self.input_url);
-                            let _ = self.start_navigation(handle_url, self.input_url.clone());
+                            match self.start_navigation(handle_url, self.input_url.clone()) {
+                                Ok(_) => {
+                                    println!("Navigation successful");
+                                }
+                                Err(e) => {
+                                    println!("Navigation failed: {:?}", e);
+                                }
+                            }
                             self.input_url = String::new();
                             self.input_mode = InputMode::Normal;
                         }
@@ -227,7 +234,14 @@ impl WasabiUI {
                     // navigate to the next url.
                     self.input_url = url.clone();
                     self.update_address_bar()?;
-                    let _ = self.start_navigation(handle_url, url);
+                    match self.start_navigation(handle_url, url) {
+                        Ok(_) => {
+                            println!("Link navigation successful");
+                        }
+                        Err(e) => {
+                            println!("Link navigation failed: {:?}", e);
+                        }
+                    }
                 }
             }
         }
@@ -252,21 +266,62 @@ impl WasabiUI {
     ) -> Result<(), Error> {
         self.clear_content_area()?;
 
-        match handle_url(destination) {
+        match handle_url(destination.clone()) {
             Ok(response) => {
+                println!("Successfully received response for: {}", destination);
                 self.browser.borrow_mut().clear_logs();
 
                 let page = self.browser.borrow().current_page();
                 page.borrow_mut().clear_display_items();
                 page.borrow_mut().receive_response(response);
+
+                println!("Page rendering complete");
             }
             Err(e) => {
+                println!("Navigation error: {:?}", e);
+                self.display_error_message(format!("{:?}", e))?;
                 return Err(e);
             }
         }
 
         self.update_ui()?;
 
+        Ok(())
+    }
+
+    fn display_error_message(&mut self, error_msg: String) -> Result<(), Error> {
+        // Display error message in the content area
+        if self
+            .window
+            .draw_string(
+                0xFF0000, // Red color
+                WINDOW_PADDING + 10,
+                WINDOW_PADDING + TOOLBAR_HEIGHT + 10,
+                "Error:",
+                noli::window::StringSize::Large,
+                /*underline=*/ false,
+            )
+            .is_err()
+        {
+            return Err(Error::InvalidUI("failed to draw error title".to_string()));
+        }
+
+        if self
+            .window
+            .draw_string(
+                0x000000, // Black color
+                WINDOW_PADDING + 10,
+                WINDOW_PADDING + TOOLBAR_HEIGHT + 40,
+                &error_msg,
+                noli::window::StringSize::Medium,
+                /*underline=*/ false,
+            )
+            .is_err()
+        {
+            return Err(Error::InvalidUI("failed to draw error message".to_string()));
+        }
+
+        self.window.flush();
         Ok(())
     }
 

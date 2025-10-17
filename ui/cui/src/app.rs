@@ -220,16 +220,24 @@ impl Tui {
         handle_url: fn(String) -> Result<HttpResponse, Error>,
         destination: String,
     ) -> Result<(), Error> {
-        match handle_url(destination) {
+        match handle_url(destination.clone()) {
             Ok(response) => {
                 self.browser.borrow_mut().clear_logs();
 
                 let page = self.browser.borrow().current_page();
                 page.borrow_mut().clear_display_items();
                 page.borrow_mut().receive_response(response);
+
+                console_debug(
+                    &Rc::downgrade(&self.browser),
+                    format!("Successfully loaded page: {}", destination),
+                );
             }
             Err(e) => {
-                console_error(&Rc::downgrade(&self.browser), format!("{:?}", e));
+                console_error(
+                    &Rc::downgrade(&self.browser),
+                    format!("Failed to load page: {:?}", e)
+                );
                 return Err(e);
             }
         }
@@ -281,14 +289,28 @@ impl Tui {
                             KeyCode::Enter => {
                                 // do nothing when there is no focused item;
                                 if self.focus.is_none() {
+                                    console_debug(
+                                        &Rc::downgrade(&self.browser),
+                                        "Enter pressed but no link focused".to_string(),
+                                    );
                                     continue;
                                 }
 
                                 if let Some(focus_item) = &self.focus {
-                                    self.start_navigation(
+                                    console_debug(
+                                        &Rc::downgrade(&self.browser),
+                                        format!("Navigating to link: {}", focus_item.destination),
+                                    );
+                                    match self.start_navigation(
                                         handle_url,
                                         focus_item.destination.clone(),
-                                    )?;
+                                    ) {
+                                        Ok(_) => {}
+                                        Err(_) => {
+                                            // Error is already logged in start_navigation
+                                            // Just continue to show error in console
+                                        }
+                                    }
                                 }
                             }
                             KeyCode::Char('e') => {
