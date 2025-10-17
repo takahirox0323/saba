@@ -301,12 +301,25 @@ impl Tui {
                         },
                         InputMode::Editing => match key.code {
                             KeyCode::Enter => {
+                                console_debug(
+                                    &Rc::downgrade(&self.browser),
+                                    format!("Enter key pressed. URL: '{}'", self.input_url),
+                                );
+
                                 // do nothing when a user puts an enter button but URL is empty
                                 if self.input_url.len() == 0 {
+                                    console_warning(
+                                        &Rc::downgrade(&self.browser),
+                                        "URL is empty. Navigation cancelled.".to_string(),
+                                    );
                                     continue;
                                 }
 
                                 let url: String = self.input_url.drain(..).collect();
+                                console_debug(
+                                    &Rc::downgrade(&self.browser),
+                                    format!("Starting navigation to: {}", url),
+                                );
                                 self.start_navigation(handle_url, url.clone())?;
                             }
                             KeyCode::Char(c) => {

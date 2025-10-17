@@ -138,10 +138,17 @@ impl WasabiUI {
                 if let Some(c) = Api::read_key() {
                     if c == 0x0A as char {
                         // enter key
-                        let _ = self.start_navigation(handle_url, self.input_url.clone());
+                        println!("Enter key pressed. URL: '{}'", self.input_url);
 
-                        self.input_url = String::new();
-                        self.input_mode = InputMode::Normal;
+                        if self.input_url.len() == 0 {
+                            println!("URL is empty. Navigation cancelled.");
+                            self.input_mode = InputMode::Normal;
+                        } else {
+                            println!("Starting navigation to: {}", self.input_url);
+                            let _ = self.start_navigation(handle_url, self.input_url.clone());
+                            self.input_url = String::new();
+                            self.input_mode = InputMode::Normal;
+                        }
                     } else if c == 0x7F as char || c == 0x08 as char {
                         // delete key
                         self.input_url.pop();
