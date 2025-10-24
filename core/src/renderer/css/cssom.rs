@@ -518,6 +518,54 @@ mod tests {
     }
 
     #[test]
+    fn test_font_size() {
+        let browser = Browser::new();
+        let style = "p { font-size: 20; }".to_string();
+        let t = CssTokenizer::new(style);
+        let cssom = CssParser::new(Rc::downgrade(&browser), t).parse_stylesheet();
+
+        let mut rule = QualifiedRule::default();
+        rule.set_selector(Selector::TypeSelector("p".to_string()));
+        let mut declaration = Declaration::default();
+        declaration.set_property("font-size".to_string());
+        declaration.set_value(ComponentValue::Number(20.0));
+        rule.set_declarations(vec![declaration]);
+
+        let expected = [rule];
+        assert_eq!(cssom.rules.len(), expected.len());
+
+        let mut i = 0;
+        for rule in &cssom.rules {
+            assert_eq!(&expected[i], rule);
+            i += 1;
+        }
+    }
+
+    #[test]
+    fn test_color_code() {
+        let browser = Browser::new();
+        let style = "p { color: #0066cc; }".to_string();
+        let t = CssTokenizer::new(style);
+        let cssom = CssParser::new(Rc::downgrade(&browser), t).parse_stylesheet();
+
+        let mut rule = QualifiedRule::default();
+        rule.set_selector(Selector::TypeSelector("p".to_string()));
+        let mut declaration = Declaration::default();
+        declaration.set_property("color".to_string());
+        declaration.set_value(ComponentValue::HashToken("#0066cc".to_string()));
+        rule.set_declarations(vec![declaration]);
+
+        let expected = [rule];
+        assert_eq!(cssom.rules.len(), expected.len());
+
+        let mut i = 0;
+        for rule in &cssom.rules {
+            assert_eq!(&expected[i], rule);
+            i += 1;
+        }
+    }
+
+    #[test]
     fn test_multiple_rules() {
         let browser = Browser::new();
         let style = "p { content: \"Hey\"; } h1 { font-size: 40; color: blue; }".to_string();

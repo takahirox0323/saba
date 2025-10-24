@@ -191,6 +191,10 @@ impl ComputedStyle {
             .expect("failed to access CSS property: font_size")
     }
 
+    pub fn set_font_size(&mut self, font_size: FontSize) {
+        self.font_size = Some(font_size);
+    }
+
     pub fn white_space(&self) -> WhiteSpace {
         self.white_space
             .expect("failed to access CSS property: white_space")
@@ -329,6 +333,18 @@ impl FontSize {
                 _ => FontSize::Medium,
             },
             _ => FontSize::Medium,
+        }
+    }
+
+    /// Convert numeric font size to FontSize enum
+    /// This is a simplified mapping - in a real browser, this would be more complex
+    pub fn from_number(size: f64) -> Self {
+        if size <= 12.0 {
+            FontSize::Medium
+        } else if size <= 18.0 {
+            FontSize::XLarge
+        } else {
+            FontSize::XXLarge
         }
     }
 }

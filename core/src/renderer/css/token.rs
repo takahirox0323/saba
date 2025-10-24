@@ -282,6 +282,25 @@ mod tests {
     }
 
     #[test]
+    fn test_color_code() {
+        let style = "p { color: #0066cc; }".to_string();
+        let mut t = CssTokenizer::new(style);
+        let expected = [
+            CssToken::Ident("p".to_string()),
+            CssToken::OpenCurly,
+            CssToken::Ident("color".to_string()),
+            CssToken::Colon,
+            CssToken::HashToken("#0066cc".to_string()),
+            CssToken::SemiColon,
+            CssToken::CloseCurly,
+        ];
+        for e in expected {
+            assert_eq!(Some(e.clone()), t.next());
+        }
+        assert!(t.next().is_none());
+    }
+
+    #[test]
     fn test_class_selector() {
         let style = ".class { color: red; }".to_string();
         let mut t = CssTokenizer::new(style);

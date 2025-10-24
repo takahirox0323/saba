@@ -282,6 +282,12 @@ impl LayoutObject {
                         self.style.set_display(display_type)
                     }
                 }
+                "font-size" => {
+                    if let ComponentValue::Number(value) = declaration.value {
+                        let font_size = FontSize::from_number(value);
+                        self.style.set_font_size(font_size);
+                    }
+                }
                 "height" => {
                     if let ComponentValue::Number(value) = declaration.value {
                         // TODO: remove this? because layout() updates size and style.
