@@ -340,18 +340,43 @@ impl WasabiUI {
                     layout_point,
                     layout_size,
                 } => {
+                    let x = layout_point.x() + WINDOW_PADDING;
+                    let y = layout_point.y() + WINDOW_PADDING + TOOLBAR_HEIGHT;
+                    let mut width = layout_size.width();
+                    let mut height = layout_size.height();
+                    let color = style.background_color().code_u32();
+
+                    // Clamp rectangle size to window bounds
+                    // Account for TITLE_BAR_HEIGHT (24) in wasabi OS
+                    let max_width = WINDOW_WIDTH - WINDOW_PADDING - x;
+                    let max_height = WINDOW_HEIGHT - WINDOW_PADDING - y - 24; // Reserve space for title bar
+
+                    if width > max_width {
+                        width = max_width;
+                    }
+                    if height > max_height {
+                        height = max_height;
+                    }
+
+                    // Skip drawing if rectangle is too small or outside bounds
+                    if width <= 0 || height <= 0 || x < 0 || y < 0 {
+                        println!("Skipping rectangle: x={}, y={}, width={}, height={} (outside bounds)",
+                                 x, y, width, height);
+                        continue;
+                    }
+
+                    println!("Drawing rectangle: x={}, y={}, width={}, height={}, color=0x{:x}",
+                             x, y, width, height, color);
+
                     if self
                         .window
-                        .fill_rect(
-                            style.background_color().code_u32(),
-                            layout_point.x() + WINDOW_PADDING,
-                            layout_point.y() + WINDOW_PADDING + TOOLBAR_HEIGHT,
-                            layout_size.width(),
-                            layout_size.height(),
-                        )
+                        .fill_rect(color, x, y, width, height)
                         .is_err()
                     {
-                        return Err(Error::InvalidUI("failed to draw a string".to_string()));
+                        return Err(Error::InvalidUI(format!(
+                            "failed to draw rectangle: x={}, y={}, width={}, height={}, color=0x{:x}",
+                            x, y, width, height, color
+                        )));
                     }
                 }
                 DisplayItem::Text {
@@ -359,19 +384,35 @@ impl WasabiUI {
                     style,
                     layout_point,
                 } => {
+                    let x = layout_point.x() + WINDOW_PADDING;
+                    let y = layout_point.y() + WINDOW_PADDING + TOOLBAR_HEIGHT;
+                    let color = style.color().code_u32();
+
+                    // Check if text is within bounds
+                    // Account for TITLE_BAR_HEIGHT (24) and text height
+                    let text_height = 16; // CHAR_HEIGHT
+                    let max_y = WINDOW_HEIGHT - WINDOW_PADDING - 24 - text_height;
+
+                    if x < 0 || x > WINDOW_WIDTH || y < 0 || y > max_y {
+                        println!("Skipping text: '{}' at x={}, y={} (outside bounds)", text, x, y);
+                        continue;
+                    }
+
+                    println!("Drawing text: '{}' at x={}, y={}, color=0x{:x}", text, x, y, color);
+
                     if self
                         .window
                         .draw_string(
-                            style.color().code_u32(),
-                            layout_point.x() + WINDOW_PADDING,
-                            layout_point.y() + WINDOW_PADDING + TOOLBAR_HEIGHT,
+                            color,
+                            x,
+                            y,
                             &text,
                             convert_font_size(style.font_size()),
                             style.text_decoration() == TextDecoration::Underline,
                         )
                         .is_err()
                     {
-                        return Err(Error::InvalidUI("failed to draw a string".to_string()));
+                        return Err(Error::InvalidUI(format!("failed to draw text: '{}'", text)));
                     }
                 }
                 DisplayItem::Img {
