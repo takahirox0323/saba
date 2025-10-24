@@ -134,6 +134,16 @@ impl Page {
         console_debug(&self.browser, "Painting tree...".to_string());
         self.paint_tree();
         console_debug(&self.browser, format!("Paint complete. Display items count: {}", self.display_items.len()));
+
+        // デバッグ: DisplayItemを詳細に確認
+        for (i, item) in self.display_items.iter().enumerate() {
+            console_debug(&self.browser, format!("DisplayItem[{}]: {:?}", i, match item {
+                crate::display_item::DisplayItem::Input { input_type, .. } => format!("Input(type={})", input_type),
+                crate::display_item::DisplayItem::Text { text, .. } => format!("Text({})", text),
+                crate::display_item::DisplayItem::Rect { .. } => "Rect".to_string(),
+                crate::display_item::DisplayItem::Img { .. } => "Img".to_string(),
+            }));
+        }
     }
 
     pub fn set_browser(&mut self, browser: Weak<RefCell<Browser>>) {

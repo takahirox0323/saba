@@ -396,7 +396,7 @@ impl HtmlParser {
                     match token {
                         Some(HtmlToken::StartTag {
                             ref tag,
-                            self_closing,
+                            self_closing: _,
                             ref attributes,
                         }) => {
                             match tag.as_str() {
@@ -524,9 +524,24 @@ impl HtmlParser {
                                     // Set the frameset-ok flag to "not ok".
 
                                     self.insert_element(tag, attributes.to_vec());
-                                    if self_closing {
-                                        self.stack_of_open_elements.pop();
-                                    }
+                                    // IMG is always a void element, so pop it regardless of self_closing flag
+                                    self.stack_of_open_elements.pop();
+                                    token = self.t.next();
+                                    continue;
+                                }
+                                // A start tag whose tag name is "input"
+                                "input" => {
+                                    // Reconstruct the active formatting elements, if any.
+
+                                    // Insert an HTML element for the token. Immediately pop the current node off the stack of open elements.
+
+                                    // Acknowledge the token's self-closing flag, if it is set.
+
+                                    // Set the frameset-ok flag to "not ok".
+
+                                    self.insert_element(tag, attributes.to_vec());
+                                    // Input is always a void element, so pop it regardless of self_closing flag
+                                    self.stack_of_open_elements.pop();
                                     token = self.t.next();
                                     continue;
                                 }
@@ -722,6 +737,7 @@ impl HtmlParser {
 mod tests {
     use super::*;
     use crate::alloc::string::ToString;
+    use crate::renderer::dom::api::get_target_element_node;
     use alloc::vec;
 
     #[test]
@@ -954,5 +970,49 @@ mod tests {
             ))))),
             p
         );
+    }
+
+    #[test]
+    fn test_input_element() {
+        let browser = Browser::new();
+        let html = "<html><body><input type=\"text\" name=\"username\"></body></html>".to_string();
+        let t = HtmlTokenizer::new(Rc::downgrade(&browser), html);
+        let window = HtmlParser::new(Rc::downgrade(&browser), t).construct_tree();
+
+        let body = get_target_element_node(window.borrow().document().borrow().first_child(), ElementKind::Body)
+            .expect("failed to get body");
+
+        let input = body
+            .borrow()
+            .first_child()
+            .expect("failed to get input element");
+
+        assert_eq!(input.borrow().element_kind(), Some(ElementKind::Input));
+
+        let element = input.borrow().get_element().expect("should be an element");
+        assert_eq!(element.get_attribute("type"), Some("text".to_string()));
+        assert_eq!(element.get_attribute("name"), Some("username".to_string()));
+    }
+
+    #[test]
+    fn test_input_with_placeholder() {
+        let browser = Browser::new();
+        let html = "<html><body><input type=\"password\" placeholder=\"Enter password\"></body></html>".to_string();
+        let t = HtmlTokenizer::new(Rc::downgrade(&browser), html);
+        let window = HtmlParser::new(Rc::downgrade(&browser), t).construct_tree();
+
+        let body = get_target_element_node(window.borrow().document().borrow().first_child(), ElementKind::Body)
+            .expect("failed to get body");
+
+        let input = body
+            .borrow()
+            .first_child()
+            .expect("failed to get input element");
+
+        assert_eq!(input.borrow().element_kind(), Some(ElementKind::Input));
+
+        let element = input.borrow().get_element().expect("should be an element");
+        assert_eq!(element.get_attribute("type"), Some("password".to_string()));
+        assert_eq!(element.get_attribute("placeholder"), Some("Enter password".to_string()));
     }
 }

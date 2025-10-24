@@ -333,6 +333,8 @@ pub enum ElementKind {
     A,
     /// https://html.spec.whatwg.org/multipage/embedded-content.html#the-img-element
     IMG,
+    /// https://html.spec.whatwg.org/multipage/forms.html#the-input-element
+    Input,
 }
 
 impl Display for ElementKind {
@@ -352,6 +354,7 @@ impl Display for ElementKind {
             ElementKind::Div => "div",
             ElementKind::A => "a",
             ElementKind::IMG => "img",
+            ElementKind::Input => "input",
         };
         write!(f, "{}", s)
     }
@@ -376,6 +379,7 @@ impl FromStr for ElementKind {
             "div" => Ok(ElementKind::Div),
             "a" => Ok(ElementKind::A),
             "img" => Ok(ElementKind::IMG),
+            "input" => Ok(ElementKind::Input),
             _ => Err(format!("unimplemented element name {:?}", s)),
         }
     }
@@ -432,5 +436,16 @@ mod tests {
         let n2 = Node::new(NodeKind::Text("different text".to_string()));
 
         assert_ne!(n1, n2);
+    }
+
+    #[test]
+    fn test_input_element() {
+        let input_node = Node::new(NodeKind::Element(Element::new("input", Vec::new())));
+
+        assert_eq!(input_node.element_kind(), Some(ElementKind::Input));
+
+        if let Some(element) = input_node.get_element() {
+            assert!(!element.is_block_element()); // input is an inline element
+        }
     }
 }

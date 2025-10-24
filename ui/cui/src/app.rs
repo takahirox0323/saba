@@ -451,6 +451,25 @@ impl Tui {
             .borrow()
             .display_items();
 
+        // デバッグ用ログ
+        use std::fs::OpenOptions;
+        use std::io::Write;
+
+        let debug_info = format!("CUI: Processing {} display items\n", display_items.len());
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/Users/youichihiga/Desktop/saba/cui_debug.log")
+            .unwrap();
+        file.write_all(debug_info.as_bytes()).unwrap();
+
+        for (i, item) in display_items.iter().enumerate() {
+            if item.is_input() {
+                let input_info = format!("CUI: Found input DisplayItem at index {}\n", i);
+                file.write_all(input_info.as_bytes()).unwrap();
+            }
+        }
+
         /*
         let content_area = Layout::default()
             .direction(Direction::Vertical)
@@ -519,6 +538,25 @@ impl Tui {
                     layout_point: _,
                 } => {
                     // Do not support images in CUI.
+                }
+                DisplayItem::Input {
+                    input_type,
+                    name: _,
+                    placeholder,
+                    value,
+                    style: _,
+                    layout_point: _,
+                    layout_size: _,
+                } => {
+                    let display_text = match (value, placeholder) {
+                        (Some(val), _) if !val.is_empty() => val.clone(),
+                        (_, Some(ph)) => format!("[{}]", ph),
+                        _ => format!("[{}]", input_type),
+                    };
+                    spans.push(Spans::from(Span::styled(
+                        format!("<{}> ", display_text),
+                        Style::default().fg(Color::Cyan),
+                    )));
                 }
             }
         }

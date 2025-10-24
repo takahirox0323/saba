@@ -404,6 +404,16 @@ impl LayoutObject {
                 size.set_height(height);
             }
             LayoutObjectKind::Inline => {
+                // Check if this is an input element and set default size
+                if let NodeKind::Element(e) = self.node_kind() {
+                    if e.kind() == ElementKind::Input {
+                        size.set_width(200); // Default input width
+                        size.set_height(30); // Default input height
+                        self.size = size;
+                        return;
+                    }
+                }
+
                 // Sum up the width and height of all children directly under this element.
                 let mut width = 0;
                 let mut height = 0;
@@ -555,6 +565,21 @@ impl LayoutObject {
                                 }];
                             }
                         }
+                    } else if e.kind() == ElementKind::Input {
+                        let input_type = e.get_attribute("type").unwrap_or_else(|| "text".to_string());
+                        let name = e.get_attribute("name");
+                        let placeholder = e.get_attribute("placeholder");
+                        let value = e.get_attribute("value");
+
+                        return vec![DisplayItem::Input {
+                            input_type,
+                            name,
+                            placeholder,
+                            value,
+                            style: self.style(),
+                            layout_point: self.point(),
+                            layout_size: self.size(),
+                        }];
                     }
                 }
             }

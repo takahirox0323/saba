@@ -5,7 +5,14 @@ use alloc::string::String;
 use alloc::string::ToString;
 use core::cell::RefCell;
 use core::include_bytes;
-use embedded_graphics::{image::Image, pixelcolor::Rgb888, prelude::*};
+use embedded_graphics::{
+    image::Image,
+    pixelcolor::Rgb888,
+    prelude::*,
+    primitives::{Rectangle, PrimitiveStyle, StyledDrawable},
+    text::Text,
+    mono_font::{MonoTextStyle, ascii::FONT_6X9},
+};
 use noli::error::Result as OsResult;
 use noli::prelude::SystemApi;
 use noli::print;
@@ -22,8 +29,15 @@ use saba_core::{
     error::Error,
     http::HttpResponse,
     renderer::layout::computed_style::{FontSize, TextDecoration},
+    renderer::layout::color::Color,
 };
 use tinybmp::{Bmp, RawBmp};
+
+// Convert saba_core color to embedded_graphics color
+fn convert_color(color: Color) -> Rgb888 {
+    let (r, g, b) = color.rgb();
+    Rgb888::new(r as u8, g as u8, b as u8)
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum InputMode {
@@ -449,6 +463,54 @@ impl WasabiUI {
 
                     if image.draw(&mut self.window).is_err() {
                         return Err(Error::Other("failed to draw an image".to_string()));
+                    }
+                }
+                DisplayItem::Input {
+                    input_type,
+                    name: _,
+                    placeholder,
+                    value,
+                    style,
+                    layout_point,
+                    layout_size,
+                } => {
+                    print!("DisplayItem::Input type: {}\n", input_type);
+
+                    // Draw input border
+                    let rect = Rectangle::new(
+                        Point::new(
+                            (layout_point.x() + WINDOW_PADDING) as i32,
+                            (layout_point.y() + WINDOW_PADDING + TOOLBAR_HEIGHT) as i32,
+                        ),
+                        Size::new(layout_size.width() as u32, layout_size.height() as u32),
+                    );
+
+                    if rect.draw_styled(
+                        &PrimitiveStyle::with_stroke(convert_color(style.color()), 1),
+                        &mut self.window,
+                    ).is_err() {
+                        return Err(Error::InvalidUI("failed to draw input border".to_string()));
+                    }
+
+                    // Draw input text (placeholder or value)
+                    let display_text = match (value, placeholder) {
+                        (Some(val), _) if !val.is_empty() => val.clone(),
+                        (_, Some(ph)) => ph.clone(),
+                        _ => format!("Enter {}", input_type),
+                    };
+
+                    if Text::new(
+                        &display_text,
+                        Point::new(
+                            (layout_point.x() + WINDOW_PADDING + 4) as i32, // Small padding inside input
+                            (layout_point.y() + WINDOW_PADDING + TOOLBAR_HEIGHT + 4) as i32,
+                        ),
+                        MonoTextStyle::new(&FONT_6X9, convert_color(style.color())),
+                    )
+                    .draw(&mut self.window)
+                    .is_err()
+                    {
+                        return Err(Error::InvalidUI(format!("failed to draw input text: '{}'", display_text)));
                     }
                 }
             }

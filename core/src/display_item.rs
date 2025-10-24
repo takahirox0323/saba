@@ -22,6 +22,15 @@ pub enum DisplayItem {
         style: ComputedStyle,
         layout_point: LayoutPoint,
     },
+    Input {
+        input_type: String,
+        name: Option<String>,
+        placeholder: Option<String>,
+        value: Option<String>,
+        style: ComputedStyle,
+        layout_point: LayoutPoint,
+        layout_size: LayoutSize,
+    },
 }
 
 impl DisplayItem {
@@ -43,6 +52,21 @@ impl DisplayItem {
                 text: _,
                 style: _,
                 layout_point: _,
+            }
+        )
+    }
+
+    pub fn is_input(&self) -> bool {
+        matches!(
+            self,
+            DisplayItem::Input {
+                input_type: _,
+                name: _,
+                placeholder: _,
+                value: _,
+                style: _,
+                layout_point: _,
+                layout_size: _,
             }
         )
     }
