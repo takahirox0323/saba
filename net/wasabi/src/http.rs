@@ -12,6 +12,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::string::ToString;
 use alloc::vec::Vec;
+use alloc::vec;
 use noli::net::lookup_host;
 use noli::net::SocketAddr;
 use noli::net::TcpStream;
@@ -26,9 +27,14 @@ impl HttpClient {
     }
 
     pub fn get(&self, host: String, port: u16, path: String) -> Result<HttpResponse, Error> {
-        let ips = match lookup_host(&host) {
-            Ok(ips) => ips,
-            Err(_) => return Err(Error::Network("Failed to find IP addresses".to_string())),
+        // Handle localhost and 127.0.0.1 directly without DNS lookup
+        let ips = if host == "localhost" || host == "127.0.0.1" {
+            vec![noli::net::IpV4Addr::new([127, 0, 0, 1])]
+        } else {
+            match lookup_host(&host) {
+                Ok(ips) => ips,
+                Err(_) => return Err(Error::Network("Failed to find IP addresses".to_string())),
+            }
         };
 
         if ips.len() < 1 {
