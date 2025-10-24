@@ -58,6 +58,8 @@ pub struct Page {
     subresources: Vec<Subresource>,
     display_items: Vec<DisplayItem>,
     modified: bool,
+    /// Currently focused input element (for text input)
+    focused_input: Option<Rc<RefCell<crate::renderer::dom::node::Node>>>,
 }
 
 impl Page {
@@ -70,11 +72,12 @@ impl Page {
             subresources: Vec::new(),
             display_items: Vec::new(),
             modified: false,
+            focused_input: None,
         }
     }
 
     /// Called when this page is clicked.
-    pub fn clicked(&self, position: (i64, i64)) -> Option<String> {
+    pub fn clicked(&mut self, position: (i64, i64)) -> Option<String> {
         let view = match &self.layout_view {
             Some(v) => v,
             None => return None,
@@ -85,6 +88,19 @@ impl Page {
                 &self.browser,
                 format!("cliecked node {:?}", n.borrow().node_kind()),
             );
+
+            // Check if clicked node is an input element
+            if let NodeKind::Element(e) = n.borrow().node().borrow().kind() {
+                if e.kind() == ElementKind::Input {
+                    // Set focus to this input element
+                    self.focused_input = Some(n.borrow().node());
+                    console_debug(&self.browser, "Input element focused".to_string());
+                    return None;
+                }
+            }
+
+            // Clear focus if clicked elsewhere
+            self.focused_input = None;
 
             if let Some(parent) = n.borrow().parent().upgrade() {
                 if let NodeKind::Element(e) = parent.borrow().node().borrow().kind() {
@@ -97,6 +113,49 @@ impl Page {
 
         console_debug(&self.browser, "clicked but node not found".to_string());
         None
+    }
+
+    /// Handle keyboard input for focused input element
+    pub fn handle_input(&mut self, key: char) -> bool {
+        if let Some(focused_node) = &self.focused_input {
+            console_debug(&self.browser, format!("handle_input called with key: {:?} (0x{:02X})", key, key as u32));
+
+            if let NodeKind::Element(e) = focused_node.borrow().kind() {
+                if e.kind() == ElementKind::Input {
+                    let current_value = e.get_value().unwrap_or_default();
+                    console_debug(&self.browser, format!("Current value before update: {:?}", current_value));
+
+                    // Handle backspace/delete
+                    if key == 0x7F as char || key == 0x08 as char {
+                        let mut chars: Vec<char> = current_value.chars().collect();
+                        if !chars.is_empty() {
+                            chars.pop();
+                            e.set_value(chars.iter().collect());
+                        }
+                    } else if key.is_ascii_graphic() || key == ' ' {
+                        // Append printable characters
+                        let mut new_value = current_value;
+                        new_value.push(key);
+                        e.set_value(new_value);
+                    }
+
+                    console_debug(&self.browser, format!("Input value after update: {:?}", e.get_value()));
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Returns true if an input element has focus
+    pub fn has_focused_input(&self) -> bool {
+        self.focused_input.is_some()
+    }
+
+    /// Refresh the display items by rebuilding layout and repainting
+    pub fn refresh_display(&mut self) {
+        self.set_layout_view();
+        self.paint_tree();
     }
 
     /// Called when HTTP response is received.

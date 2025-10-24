@@ -50,6 +50,8 @@ pub trait EventTarget {
 pub enum Event {
     /// https://w3c.github.io/uievents/#idl-mouseevent
     MouseEvent(MouseEvent),
+    /// https://w3c.github.io/uievents/#idl-keyboardevent
+    KeyboardEvent(KeyboardEvent),
 }
 
 /// https://w3c.github.io/uievents/#idl-mouseevent
@@ -68,6 +70,28 @@ impl MouseEvent {
             target,
             screen_x: 0,
             screen_y: 0,
+        }
+    }
+
+    pub fn event_type(&self) -> String {
+        self.event_type.clone()
+    }
+}
+
+/// https://w3c.github.io/uievents/#idl-keyboardevent
+#[allow(dead_code)]
+pub struct KeyboardEvent {
+    event_type: String,
+    pub target: Box<dyn EventTarget>,
+    pub key: char,
+}
+
+impl KeyboardEvent {
+    pub fn new(event_type: String, target: Box<dyn EventTarget>, key: char) -> Self {
+        Self {
+            event_type,
+            target,
+            key,
         }
     }
 

@@ -21,6 +21,7 @@ use crate::renderer::layout::computed_style::DisplayType;
 use crate::renderer::layout::computed_style::FontSize;
 use crate::renderer::layout::layout_point::LayoutPoint;
 use crate::renderer::layout::layout_size::LayoutSize;
+use crate::utils::console_debug;
 use crate::utils::console_error;
 use crate::utils::console_warning;
 use alloc::format;
@@ -575,7 +576,16 @@ impl LayoutObject {
                         let input_type = e.get_attribute("type").unwrap_or_else(|| "text".to_string());
                         let name = e.get_attribute("name");
                         let placeholder = e.get_attribute("placeholder");
-                        let value = e.get_attribute("value");
+                        // Use dynamic value if available, otherwise fall back to attribute value
+                        let value = e.get_value();
+
+                        console_debug(
+                            &self.browser,
+                            format!(
+                                "Input paint - name: {:?}, value: {:?}, placeholder: {:?}",
+                                name, value, placeholder
+                            ),
+                        );
 
                         return vec![DisplayItem::Input {
                             input_type,

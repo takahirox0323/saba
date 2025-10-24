@@ -180,10 +180,10 @@ impl EventTarget for Node {
         // https://dom.spec.whatwg.org/#concept-event-dispatch
         let mut activation_target: Option<Self> = None;
         match &event {
-            // "5.4. Let isActivationEvent be true, if event is a MouseEvent object and event’s
+            // "5.4. Let isActivationEvent be true, if event is a MouseEvent object and event's
             // type attribute is "click"; otherwise false."
             Event::MouseEvent(mouse_event) => {
-                // "5. If target is not relatedTarget or target is event’s relatedTarget, then:"
+                // "5. If target is not relatedTarget or target is event's relatedTarget, then:"
                 //
                 // "5.5. If isActivationEvent is true and target has activation behavior, then set
                 // activationTarget to target."
@@ -193,15 +193,19 @@ impl EventTarget for Node {
                     activation_target = Some(self.clone());
                 }
             }
+            Event::KeyboardEvent(_keyboard_event) => {
+                // Keyboard events don't have activation behavior by default
+                // They are handled separately by the page/window
+            }
         }
 
         // "11. If activationTarget is non-null, then:"
         if let Some(target) = activation_target {
             if let Some(activation_behavior) = target.activation_behavior {
-                // "11.1. If event’s canceled flag is unset, then run activationTarget’s activation behavior
+                // "11.1. If event's canceled flag is unset, then run activationTarget's activation behavior
                 // with event."
                 // "11.2. Otherwise, if activationTarget has legacy-canceled-activation behavior, then run
-                // activationTarget’s legacy-canceled-activation behavior."
+                // activationTarget's legacy-canceled-activation behavior."
                 activation_behavior(Rc::new(RefCell::new(self.clone())), event);
             }
         }
@@ -231,11 +235,21 @@ impl PartialEq for NodeKind {
 }
 
 /// https://dom.spec.whatwg.org/#interface-element
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Element {
     kind: ElementKind,
     attributes: Vec<Attribute>,
+    /// Dynamic value for form elements (e.g., input)
+    dynamic_value: Rc<RefCell<Option<String>>>,
 }
+
+impl PartialEq for Element {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind && self.attributes == other.attributes
+    }
+}
+
+impl Eq for Element {}
 
 impl Element {
     pub fn new(element_name: &str, attributes: Vec<Attribute>) -> Self {
@@ -243,6 +257,7 @@ impl Element {
             kind: ElementKind::from_str(element_name)
                 .expect("failed to convert string to ElementKind"),
             attributes,
+            dynamic_value: Rc::new(RefCell::new(None)),
         }
     }
 
@@ -262,6 +277,21 @@ impl Element {
             }
         }
         None
+    }
+
+    /// Sets the dynamic value for form elements
+    pub fn set_value(&self, value: String) {
+        *self.dynamic_value.borrow_mut() = Some(value);
+    }
+
+    /// Gets the dynamic value for form elements (returns current value or attribute value)
+    pub fn get_value(&self) -> Option<String> {
+        // First check dynamic value
+        if let Some(value) = self.dynamic_value.borrow().clone() {
+            return Some(value);
+        }
+        // Fall back to attribute value
+        self.get_attribute("value")
     }
 
     /// return true if this element is a block element

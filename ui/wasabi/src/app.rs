@@ -10,8 +10,6 @@ use embedded_graphics::{
     pixelcolor::Rgb888,
     prelude::*,
     primitives::{Rectangle, PrimitiveStyle, StyledDrawable},
-    text::Text,
-    mono_font::{MonoTextStyle, ascii::FONT_6X9},
 };
 use noli::error::Result as OsResult;
 use noli::prelude::SystemApi;
@@ -145,8 +143,26 @@ impl WasabiUI {
     ) -> Result<(), Error> {
         match self.input_mode {
             InputMode::Normal => {
-                // ignore a key when input_mode is Normal.
-                let _ = Api::read_key();
+                // Check if an input element has focus
+                let page = self.browser.borrow().current_page();
+                let has_focused_input = page.borrow().has_focused_input();
+
+                if has_focused_input {
+                    if let Some(c) = Api::read_key() {
+                        // Handle input to focused element
+                        if page.borrow_mut().handle_input(c) {
+                            // Refresh display items by rebuilding layout tree
+                            page.borrow_mut().refresh_display();
+
+                            // Re-render the page to show updated input value
+                            self.clear_content_area()?;
+                            self.update_ui()?;
+                        }
+                    }
+                } else {
+                    // ignore a key when input_mode is Normal and no input is focused
+                    let _ = Api::read_key();
+                }
             }
             InputMode::Editing => {
                 if let Some(c) = Api::read_key() {
@@ -474,7 +490,8 @@ impl WasabiUI {
                     layout_point,
                     layout_size,
                 } => {
-                    print!("DisplayItem::Input type: {}\n", input_type);
+                    print!("DisplayItem::Input type: {}, value: {:?}, placeholder: {:?}\n",
+                        input_type, value, placeholder);
 
                     // Draw input border
                     let rect = Rectangle::new(
@@ -499,16 +516,32 @@ impl WasabiUI {
                         _ => format!("Enter {}", input_type),
                     };
 
-                    if Text::new(
-                        &display_text,
-                        Point::new(
-                            (layout_point.x() + WINDOW_PADDING + 4) as i32, // Small padding inside input
-                            (layout_point.y() + WINDOW_PADDING + TOOLBAR_HEIGHT + 4) as i32,
-                        ),
-                        MonoTextStyle::new(&FONT_6X9, convert_color(style.color())),
-                    )
-                    .draw(&mut self.window)
-                    .is_err()
+                    // Calculate text position
+                    // Add padding from left edge and vertically center the text
+                    let text_x = layout_point.x() + WINDOW_PADDING + 5; // 5px padding inside input
+
+                    // Estimate font height based on font size for vertical centering
+                    let font_height = match style.font_size() {
+                        FontSize::XXLarge => 20,
+                        FontSize::XLarge => 18,
+                        FontSize::Medium => 16,
+                    };
+
+                    // Center text vertically within the input box
+                    let vertical_offset = ((layout_size.height() as i64 - font_height) / 2).max(0);
+                    let text_y = layout_point.y() + WINDOW_PADDING + TOOLBAR_HEIGHT + vertical_offset;
+
+                    if self
+                        .window
+                        .draw_string(
+                            style.color().code_u32(),
+                            text_x,
+                            text_y,
+                            &display_text,
+                            convert_font_size(style.font_size()),
+                            false, // no underline for input text
+                        )
+                        .is_err()
                     {
                         return Err(Error::InvalidUI(format!("failed to draw input text: '{}'", display_text)));
                     }
